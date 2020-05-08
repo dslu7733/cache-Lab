@@ -147,6 +147,7 @@ void accessData(mem_addr_t addr)
     mem_addr_t set_index = (addr >> b) & set_index_mask;
     mem_addr_t tag = addr >> (s+b);
 
+
     cache_set_t cache_set = cache[set_index];
     cache_set_t cache_free_subset[E];
     cache_set_t cache_valid_subset[E];
@@ -157,8 +158,6 @@ void accessData(mem_addr_t addr)
     memset( cache_free_subset, 0, sizeof(cache_free_subset) );
     memset( cache_valid_subset, 0, sizeof(cache_valid_subset) );
 
-    //printf("set_index = %lld, tag = %lld\n", set_index, tag );
-    
 
     //find cache line
     for(i=0;  i<E;  i++){
@@ -176,7 +175,7 @@ void accessData(mem_addr_t addr)
 			cache_set[i].lru = 0;	//refresh lru marker of hitted cache line
 
 			//refresh hit markers of other cache lines, based LRU algorithm
-			arrRefreshLRU( cache_valid_subset, 0, valid_index-1, lru_hit_cache );
+			arrRefreshLRU( cache_valid_subset, 0, valid_index - 1, lru_hit_cache );
 			ptrRefreshLRU( cache_set, i+1, E, lru_hit_cache );
 
 			break;
@@ -193,11 +192,12 @@ void accessData(mem_addr_t addr)
 	if( verbosity == 1 ) printf("miss ");
 
     	miss_count ++;
-	arrRefreshLRU( cache_valid_subset, 0, valid_index, 0 );
+	arrRefreshLRU( cache_valid_subset, 0, valid_index, E-1 );
 
 	cache_free_subset[0]->valid = 1;
 	cache_free_subset[0]->lru = 0;
 	cache_free_subset[0]->tag = tag;
+
     }
     else if( hit_flag == 0  &&  free_index == 0 ){	//access miss and eviction
 	if( verbosity == 1 ) printf("miss eviction ");
@@ -209,11 +209,19 @@ void accessData(mem_addr_t addr)
 		if( cache_set[i].lru == E-1 ){
 			cache_set[i].lru = 0;
 			cache_set[i].tag = tag;
-			ptrRefreshLRU( cache_set, 0, i, 0 );
-			ptrRefreshLRU( cache_set, i+1, E, 0 );
+			ptrRefreshLRU( cache_set, 0, i, E-1 );
+			ptrRefreshLRU( cache_set, i+1, E, E-1 );
+			//printf("valid_index = %d, lru_hit_cache = %d lru=%llu\n", i, E-1, cache_set[i].lru);
+			break;
 		}
 	}
     }
+
+   /* 
+    printf("set index = %llu\n", set_index );
+    for( i =0; i<E; i++)
+    	printf("valid = %d, lru = %llu \n",cache_set[i].valid, cache_set[i].lru );
+    */
 
 }
 
@@ -347,6 +355,9 @@ int main(int argc, char* argv[])
     /* Free allocated memory */
     freeCache();
 
-    printf("hits:%d misses:%d evictions:%d\n", hit_count, miss_count, eviction_count);
+    //printf("hits:%d misses:%d evictions:%d\n", hit_count, miss_count, eviction_count);
+
+    /* Output the hit and miss statistics for the autograder */
+    printSummary(hit_count, miss_count, eviction_count);
     return 0;
 }
